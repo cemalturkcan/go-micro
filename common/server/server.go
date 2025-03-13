@@ -4,7 +4,6 @@ import (
 	"common/commonconfig"
 	"common/middlewares"
 	"common/rest"
-	"fmt"
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -13,7 +12,7 @@ import (
 func New(
 	RegisterMiddlewaresBefore func(app *fiber.App),
 	RegisterMiddlewaresAfter func(app *fiber.App),
-	RegisterRoutes func(app *fiber.App),
+	RegisterRoutes func(app *fiber.App) fiber.Router,
 	RegisterFinalMiddlewaresBefore func(app *fiber.App),
 	RegisterFinalMiddlewaresAfter func(app *fiber.App),
 ) *fiber.App {
@@ -29,9 +28,9 @@ func New(
 	middlewares.RegisterMiddlewares(app)
 	RegisterMiddlewaresAfter(app)
 
-	RegisterRoutes(app)
+	group := RegisterRoutes(app)
 
-	app.Get(fmt.Sprintf("/%s/health", commonconfig.AppName), func(c *fiber.Ctx) error {
+	group.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendString("OK")
 	})
 

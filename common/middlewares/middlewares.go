@@ -28,6 +28,7 @@ func RegisterFinalMiddlewares(s *fiber.App) {
 	s.Static("/", "./public")
 	s.Use(func(c *fiber.Ctx) error {
 		log.Info("404: ", c.Path())
+		log.Info(c.Method(), c.Path(), c.Response().StatusCode())
 		return c.Redirect("/")
 	})
 }

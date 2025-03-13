@@ -1,16 +1,23 @@
-SERVICE_1=product-catalog
+PRODUCT_CATALOG=product-catalog
+PRODUCT_CATEGORY=product-category
 
-SERVICE_1_PATH=./services/product-catalog
+PRODUCT_CATALOG_PATH=./services/product-catalog
+PRODUCT_CATEGORY_PATH=./services/product-category
 
 AIR_CMD=air
 
-run-service-1:
+run-product-catalog:
 	@echo "Running Service 1"
-	cd $(SERVICE_1_PATH) && $(AIR_CMD)
+	cd $(PRODUCT_CATALOG_PATH) && $(AIR_CMD)
+
+run-product-category:
+	@echo "Running Service 2"
+	cd $(PRODUCT_CATEGORY_PATH) && $(AIR_CMD)
 
 
 watch:
-	@echo "Starting both services concurrently..."
-	(cd $(SERVICE_1_PATH) && $(AIR_CMD)) &
+	@echo "Running services..."
+	(cd $(PRODUCT_CATALOG_PATH) && $(AIR_CMD)) & \
+	(cd $(PRODUCT_CATEGORY_PATH) && $(AIR_CMD)) &
 	wait
-	@echo "All services are running"
+	@echo "Services are running..."

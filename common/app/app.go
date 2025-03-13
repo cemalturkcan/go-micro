@@ -17,7 +17,7 @@ import (
 func Load(
 	RegisterMiddlewaresBefore func(app *fiber.App),
 	RegisterMiddlewaresAfter func(app *fiber.App),
-	RegisterRoutes func(app *fiber.App),
+	RegisterRoutes func(app *fiber.App) fiber.Router,
 	RegisterFinalMiddlewaresBefore func(app *fiber.App),
 	RegisterFinalMiddlewaresAfter func(app *fiber.App),
 ) {
