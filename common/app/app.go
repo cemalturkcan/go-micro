@@ -1,17 +1,16 @@
 package app
 
 import (
-	"common/commonconfig"
 	"common/consul"
 	"common/database"
-	"common/exitcode"
 	"common/keystore"
 	"common/server"
-	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"google.golang.org/grpc"
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 )
 
 func Load(
@@ -20,6 +19,8 @@ func Load(
 	RegisterRoutes func(app *fiber.App) fiber.Router,
 	RegisterFinalMiddlewaresBefore func(app *fiber.App),
 	RegisterFinalMiddlewaresAfter func(app *fiber.App),
+	RegisterGrpcRoutes func(server *grpc.Server),
+
 ) {
 	client, id := consul.RegisterServiceWithConsul()
 
@@ -31,7 +32,20 @@ func Load(
 	database.Connect()
 	database.MigrateDb()
 	keystore.Connect()
-	app := server.New(RegisterMiddlewaresBefore, RegisterMiddlewaresAfter, RegisterRoutes, RegisterFinalMiddlewaresBefore, RegisterFinalMiddlewaresAfter)
+
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		server.NewWebServer(RegisterMiddlewaresBefore, RegisterMiddlewaresAfter, RegisterRoutes, RegisterFinalMiddlewaresBefore, RegisterFinalMiddlewaresAfter)
+	}()
+
+	go func() {
+		defer wg.Done()
+		server.NewGrpcServer(RegisterGrpcRoutes)
+	}()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -40,11 +54,6 @@ func Load(
 		database.Close()
 		keystore.Close()
 		_ = consul.DeregisterService(client, id)
-		_ = app.Shutdown()
 	}()
-
-	err := app.Listen(fmt.Sprintf(":%d", commonconfig.Port))
-	if err != nil {
-		os.Exit(exitcode.ServerStartError)
-	}
+	wg.Wait()
 }

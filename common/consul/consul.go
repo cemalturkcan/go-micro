@@ -18,20 +18,34 @@ func RegisterServiceWithConsul() (*api.Client, string) {
 	}
 
 	id := commonconfig.AppName + "-" + uuid.New().String()
-	checkHTTP := fmt.Sprintf("http://%s:%d/%s/health", commonconfig.ServiceAddress, commonconfig.Port, commonconfig.AppName)
+
+	checkHTTP := fmt.Sprintf("http://%s:%d/%s/health", commonconfig.ServiceHost, commonconfig.Port, commonconfig.AppName)
 	log.Printf("Check HTTP: %s", checkHTTP)
 
 	registration := &api.AgentServiceRegistration{
 		ID:      id,
 		Name:    commonconfig.AppName,
-		Address: commonconfig.ServiceAddress,
+		Address: commonconfig.ServiceHost,
 		Port:    commonconfig.Port,
+		Tags: []string{
+			// Traefik gRPC routing metadata
+			"traefik.enable=true",
+			"traefik.tcp.routers." + commonconfig.AppName + ".entrypoints=grpc",
+			"traefik.tcp.routers." + commonconfig.AppName + ".service=" + commonconfig.AppName,
+			"traefik.tcp.services." + commonconfig.AppName + ".loadbalancer.server.port=" + fmt.Sprintf("%d", commonconfig.GrpcPort),
+		},
 		Check: &api.AgentServiceCheck{
 			HTTP:     checkHTTP,
 			Interval: "10s",
 			Notes:    "Consul check",
 		},
-		Tags: []string{"traefik.enable=true"},
+		Checks: api.AgentServiceChecks{
+			&api.AgentServiceCheck{
+				GRPC:     fmt.Sprintf("%s:%d", commonconfig.ServiceHost, commonconfig.GrpcPort),
+				Interval: "10s",
+				Notes:    "gRPC health check",
+			},
+		},
 	}
 
 	err = client.Agent().ServiceRegister(registration)
@@ -41,7 +55,7 @@ func RegisterServiceWithConsul() (*api.Client, string) {
 		return nil, ""
 	}
 
-	fmt.Println("Service A registered with Consul")
+	fmt.Println("Service registered with Consul")
 
 	return client, id
 }
