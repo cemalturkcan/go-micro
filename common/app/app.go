@@ -2,36 +2,56 @@ package app
 
 import (
 	"common/commonconfig"
-	"common/consul"
 	"common/database"
-	"common/exitcode"
 	"common/keystore"
+	"common/registry"
 	"common/server"
-	"fmt"
 	"github.com/gofiber/fiber/v2"
-	"log"
+	"google.golang.org/grpc"
 	"os"
 	"os/signal"
+	"sync"
+	"time"
 )
 
 func Load(
 	RegisterMiddlewaresBefore func(app *fiber.App),
 	RegisterMiddlewaresAfter func(app *fiber.App),
-	RegisterRoutes func(app *fiber.App) fiber.Router,
+	RegisterRoutes func(app *fiber.App),
 	RegisterFinalMiddlewaresBefore func(app *fiber.App),
 	RegisterFinalMiddlewaresAfter func(app *fiber.App),
-) {
-	client, id := consul.RegisterServiceWithConsul()
+	RegisterGrpcRoutes func(server *grpc.Server),
 
-	if client == nil {
-		log.Fatalf("Failed to register service")
-		return
-	}
+) {
+	//
+	id := registry.SetConsulAndRegisterServiceWithConsul()
+	registry.RegisterGrpcResolver()
+	//
 
 	database.Connect()
 	database.MigrateDb()
 	keystore.Connect()
-	app := server.New(RegisterMiddlewaresBefore, RegisterMiddlewaresAfter, RegisterRoutes, RegisterFinalMiddlewaresBefore, RegisterFinalMiddlewaresAfter)
+
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		server.NewWebServer(RegisterMiddlewaresBefore, RegisterMiddlewaresAfter, RegisterRoutes, RegisterFinalMiddlewaresBefore, RegisterFinalMiddlewaresAfter)
+	}()
+
+	go func() {
+		defer wg.Done()
+		server.NewGrpcServer(RegisterGrpcRoutes)
+	}()
+
+	go func() {
+		for {
+			registry.ReportHealthyState(id, commonconfig.AppName)
+			time.Sleep(1 * time.Second)
+		}
+	}()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -39,12 +59,7 @@ func Load(
 		_ = <-c
 		database.Close()
 		keystore.Close()
-		_ = consul.DeregisterService(client, id)
-		_ = app.Shutdown()
+		registry.DeregisterService(id)
 	}()
-
-	err := app.Listen(fmt.Sprintf(":%d", commonconfig.Port))
-	if err != nil {
-		os.Exit(exitcode.ServerStartError)
-	}
+	wg.Wait()
 }

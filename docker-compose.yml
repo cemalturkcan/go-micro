@@ -1,5 +1,13 @@
 version: '3.8'
 
+
+#open bridge network
+
+networks:
+  default:
+    driver: bridge
+
+
 services:
   consul:
     image: hashicorp/consul:1.15.3
@@ -9,19 +17,24 @@ services:
       - "8600:8600/udp"
     command: "agent -dev -client=0.0.0.0"
     restart: always
+    networks:
+      default:
 
   traefik:
-    image: traefik:v2.10
+    image: traefik:v3.3.4
     container_name: traefik
     command:
       - "--api.insecure=true"
       - "--providers.consulcatalog=true"
       - "--providers.consulcatalog.endpoint.address=consul:8500"
-      - "--providers.consulcatalog.defaultRule=PathPrefix(`/{{ .Name }}`)"
+      - "--providers.consulcatalog.defaultRule=Host(`{{ .Name }}.localhost`)"
       - "--entrypoints.web.address=:80"
+      - "--log.level=DEBUG"
     ports:
       - "80:80"
       - "8080:8080"
     depends_on:
       - consul
     restart: always
+    networks:
+      default:
