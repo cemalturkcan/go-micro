@@ -29,7 +29,7 @@ type UserInformation struct {
 
 var (
 	authProvider *gocloak.GoCloak
-	path         = os.Getenv("KEYCLOAK_PATH")
+	path         = ""
 	userName     = ""
 	password     = ""
 	realm        = ""
@@ -61,13 +61,17 @@ func NewClient() {
 func loginAdmin() {
 	tokentemp, err := authProvider.LoginAdmin(context.Background(), userName, password, realm)
 	if err != nil {
+		log.Println("Error: ", err)
 		log.Fatal(err)
 	}
+	log.Println("Admin Token: ", tokentemp.AccessToken)
 	adminToken = tokentemp.AccessToken
 }
 
 func RegisterUser(user User) error {
-	_, err := authProvider.CreateUser(context.Background(), adminToken, realm, gocloak.User{
+	log.Println("Register User")
+	log.Println("realm: ", realm)
+	id, err := authProvider.CreateUser(context.Background(), adminToken, realm, gocloak.User{
 		Username:  &user.Username,
 		FirstName: &user.FirstName,
 		LastName:  &user.LastName,
@@ -76,10 +80,11 @@ func RegisterUser(user User) error {
 	})
 
 	if err != nil {
+		log.Println("Errr ", err)
 		return err
 	}
 
-	err = authProvider.SetPassword(context.Background(), adminToken, realm, user.Username, user.Password, false)
+	err = authProvider.SetPassword(context.Background(), adminToken, id, realm, user.Password, false)
 
 	return err
 }

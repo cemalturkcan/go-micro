@@ -3,6 +3,7 @@ package main
 import (
 	"common/app"
 	"common/grpc/helloworld"
+	"common/middlewares/authentication"
 	"common/role"
 	"context"
 	"github.com/gofiber/fiber/v2"
@@ -12,23 +13,16 @@ import (
 
 func main() {
 	app.Load(app.Config{
-		RegisterMiddlewaresBefore:      RegisterMiddlewaresBefore,
-		RegisterMiddlewaresAfter:       RegisterMiddlewaresAfter,
-		RegisterRoutes:                 RegisterRoutes,
-		RegisterFinalMiddlewaresBefore: RegisterFinalMiddlewaresBefore,
-		RegisterFinalMiddlewaresAfter:  RegisterFinalMiddlewaresAfter,
-		RegisterGrpcRoutes:             RegisterGrpcRoutes,
-		ConnectKeystore:                true,
-		ConnectDatabase:                true,
+		RegisterMiddlewaresAfter: RegisterMiddlewaresAfter,
+		RegisterRoutes:           RegisterRoutes,
+		RegisterGrpcRoutes:       RegisterGrpcRoutes,
+		ConnectKeystore:          true,
+		ConnectDatabase:          true,
 	})
 }
 
-func RegisterMiddlewaresBefore(app *fiber.App) {
-	log.Println("RegisterMiddlewaresBefore")
-}
-
 func RegisterMiddlewaresAfter(app *fiber.App) {
-	log.Println("RegisterMiddlewaresAfter")
+	authentication.RegisterAuthenticationMiddleware(app, []string{})
 }
 
 func RegisterRoutes(app *fiber.App) {
@@ -38,13 +32,6 @@ func RegisterRoutes(app *fiber.App) {
 		}
 		return c.SendString("Hello, World!")
 	})
-}
-func RegisterFinalMiddlewaresBefore(app *fiber.App) {
-	log.Println("RegisterFinalMiddlewaresBefore")
-}
-
-func RegisterFinalMiddlewaresAfter(app *fiber.App) {
-	log.Println("RegisterFinalMiddlewaresAfter")
 }
 
 type server struct {

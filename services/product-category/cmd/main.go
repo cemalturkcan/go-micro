@@ -4,6 +4,7 @@ import (
 	"common/app"
 	grpcutil "common/grpc"
 	"common/grpc/helloworld"
+	"common/middlewares/authentication"
 	"context"
 	"github.com/gofiber/fiber/v2"
 	"google.golang.org/grpc"
@@ -12,25 +13,17 @@ import (
 
 func main() {
 	app.Load(app.Config{
-		RegisterMiddlewaresBefore:      RegisterMiddlewaresBefore,
-		RegisterMiddlewaresAfter:       RegisterMiddlewaresAfter,
-		RegisterRoutes:                 RegisterRoutes,
-		RegisterFinalMiddlewaresBefore: RegisterFinalMiddlewaresBefore,
-		RegisterFinalMiddlewaresAfter:  RegisterFinalMiddlewaresAfter,
-		RegisterGrpcRoutes:             RegisterGrpcRoutes,
-		ConnectKeystore:                true,
-		ConnectDatabase:                true,
+		RegisterMiddlewaresAfter: RegisterMiddlewaresAfter,
+		RegisterRoutes:           RegisterRoutes,
+		RegisterGrpcRoutes:       RegisterGrpcRoutes,
+		ConnectKeystore:          true,
+		ConnectDatabase:          true,
 	})
 }
 
-func RegisterMiddlewaresBefore(app *fiber.App) {
-	log.Println("RegisterMiddlewaresBefore")
-}
-
 func RegisterMiddlewaresAfter(app *fiber.App) {
-	log.Println("RegisterMiddlewaresAfter")
+	authentication.RegisterAuthenticationMiddleware(app, []string{"/"})
 }
-
 func RegisterRoutes(app *fiber.App) {
 	app.Get("/", func(c *fiber.Ctx) error {
 		conn, err := grpcutil.ServiceConnection("product-catalog")
@@ -49,14 +42,6 @@ func RegisterRoutes(app *fiber.App) {
 
 		return c.SendString(resp.GetMessage())
 	})
-}
-
-func RegisterFinalMiddlewaresBefore(app *fiber.App) {
-	log.Println("RegisterFinalMiddlewaresBefore")
-}
-
-func RegisterFinalMiddlewaresAfter(app *fiber.App) {
-	log.Println("RegisterFinalMiddlewaresAfter")
 }
 
 func RegisterGrpcRoutes(s *grpc.Server) {

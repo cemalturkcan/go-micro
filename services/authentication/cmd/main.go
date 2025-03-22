@@ -4,6 +4,7 @@ import (
 	"authentication/internal/authprovider"
 	"common/app"
 	"common/grpc/authentication"
+	middleware "common/middlewares/authentication"
 	"common/rest"
 	"context"
 	"github.com/gofiber/fiber/v2"
@@ -13,11 +14,16 @@ import (
 
 func main() {
 	app.Load(app.Config{
-		RegisterGrpcRoutes: RegisterGrpcRoutes,
-		RegisterRoutes:     RegisterRoutes,
-		ConnectKeystore:    false,
-		ConnectDatabase:    false,
+		RegisterGrpcRoutes:       RegisterGrpcRoutes,
+		RegisterRoutes:           RegisterRoutes,
+		RegisterMiddlewaresAfter: RegisterMiddlewaresAfter,
+		ConnectKeystore:          false,
+		ConnectDatabase:          false,
 	})
+}
+
+func RegisterMiddlewaresAfter(app *fiber.App) {
+	middleware.RegisterAuthenticationMiddleware(app, []string{"/login", "/register"})
 }
 
 type server struct {
@@ -27,6 +33,7 @@ type server struct {
 func (s *server) CheckAndGetUserInfo(_ context.Context, in *authentication.CheckAndGetUserInfoRequest) (*authentication.CheckAndGetUserInfoResponse, error) {
 	res, err := authprovider.CheckAndGetUserInfo(in.Token)
 	if err != nil {
+		log.Println("Error: ", err)
 		return nil, err
 	}
 	return &authentication.CheckAndGetUserInfoResponse{
@@ -52,9 +59,9 @@ type LoginRequest struct {
 
 type RegisterRequest struct {
 	Username  string `json:"username" validate:"required"`
-	FirstName string `json:"first_name" validate:"required"`
-	LastName  string `json:"last_name" validate:"required"`
 	Email     string `json:"email" validate:"required,email"`
+	FirstName string `json:"firstName" validate:"required"`
+	LastName  string `json:"lastName" validate:"required"`
 	Password  string `json:"password" validate:"required,min=8"`
 }
 
@@ -98,6 +105,7 @@ func Register(c *fiber.Ctx) error {
 	})
 
 	if err != nil {
+		log.Println("Error: ", err)
 		return rest.Res(c, err, nil)
 	}
 

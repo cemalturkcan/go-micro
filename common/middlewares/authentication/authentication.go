@@ -10,10 +10,10 @@ import (
 	"strings"
 )
 
-func RegisterAuthenticationMiddleware(app *fiber.App) {
+func RegisterAuthenticationMiddleware(app *fiber.App, specials []string) {
 	app.Use(func(c *fiber.Ctx) error {
 
-		if filterJwtMiddleware(c) {
+		if filterJwtMiddleware(c, specials) {
 			return c.Next()
 		}
 		authHeader := c.Cookies("Authorization")
@@ -31,8 +31,11 @@ func RegisterAuthenticationMiddleware(app *fiber.App) {
 			return onUnAuthorized(c)
 		}
 
+		log.Println("Response from grpc server")
+		log.Println(resp)
 		c.Locals("ID", resp.Id)
 		c.Locals("Email", resp.Email)
+		log.Println("Permissions: ", resp.Permissions)
 		c.Locals("Permissions", resp.Permissions)
 		return c.Next()
 	})
@@ -49,6 +52,9 @@ func CheckAndGetUserInfo(token string) (*authentication.CheckAndGetUserInfoRespo
 	resp, err := authClient.CheckAndGetUserInfo(context.Background(), &authentication.CheckAndGetUserInfoRequest{Token: token})
 
 	log.Println("Response from grpc server")
+
+	log.Println(resp)
+
 	if err != nil {
 		return nil, err
 	}
@@ -60,13 +66,9 @@ func onUnAuthorized(c *fiber.Ctx) error {
 	return rest.ErrorRes(c, rest.Unauthorized, rest.ErrorCode[rest.Unauthorized])
 }
 
-var specialAuthorizedRoutes = []string{
-	"/login",
-	"/register",
-}
-
-func filterJwtMiddleware(c *fiber.Ctx) bool {
-	for _, route := range specialAuthorizedRoutes {
+func filterJwtMiddleware(c *fiber.Ctx, specials []string) bool {
+	log.Println("Path: ", specials)
+	for _, route := range specials {
 		if route == c.Path() {
 			return true
 		}

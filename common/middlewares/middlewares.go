@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"common/config"
-	"common/middlewares/authentication"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/compress"
@@ -22,8 +21,6 @@ func RegisterMiddlewares(s *fiber.App) {
 	}
 
 	s.Use(compress.New())
-
-	authentication.RegisterAuthenticationMiddleware(s)
 }
 
 func RegisterFinalMiddlewares(s *fiber.App) {
