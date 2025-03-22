@@ -1,6 +1,24 @@
 version: '3.8'
 
 services:
+  postgres:
+    container_name: postgres
+    image: postgres:latest
+    restart: always
+    command: postgres -c 'max_connections=500'
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+  redis:
+    container_name: redis
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+
   consul:
     image: hashicorp/consul:1.15.3
     container_name: consul
@@ -25,6 +43,7 @@ services:
     depends_on:
       - consul
     restart: always
+
 
   keycloakdb:
     image: postgres:latest
