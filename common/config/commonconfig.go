@@ -2,6 +2,7 @@ package commonconfig
 
 import (
 	"github.com/joho/godotenv"
+	"log"
 	"os"
 	"strconv"
 )
@@ -22,8 +23,10 @@ var (
 	KeyStoreDb       = 0
 	KeyStorePassword = ""
 
-	AppName = ""
-	Port    = 8080
+	AppName          = ""
+	Port             = 8080
+	LoadBalancerPort = 8081
+	GrpcPort         = 50051
 
 	PreFork = false
 
@@ -32,8 +35,6 @@ var (
 	// Consul
 	ConsulAddress = ""
 	ServiceHost   = ""
-
-	GrpcPort = 50051
 )
 
 const (
@@ -46,7 +47,14 @@ var (
 )
 
 func init() {
-	_ = godotenv.Load()
+	err := godotenv.Load(".env")
+
+	if err != nil {
+		log.Println("Error loading .env file")
+		log.Println(err)
+	}
+
+	log.Println("Loading .env file")
 
 	//DB
 	DbHost = os.Getenv("DB_HOST")
@@ -65,6 +73,7 @@ func init() {
 	KeyStorePassword = os.Getenv("KEYSTORE_PASSWORD")
 
 	AppName = os.Getenv("APP_NAME")
+
 	PreFork = os.Getenv("PreFork") == "true"
 
 	LoggerEnabled = os.Getenv("LOGGER_ENABLED") == "true"
@@ -80,6 +89,11 @@ func init() {
 	gPort, err := strconv.Atoi(os.Getenv("GRPC_PORT"))
 	if err == nil {
 		GrpcPort = gPort
+	}
+
+	lbPort, err := strconv.Atoi(os.Getenv("LOAD_BALANCER_PORT"))
+	if err == nil {
+		LoadBalancerPort = lbPort
 	}
 
 	if os.Getenv("MODE") == Production {

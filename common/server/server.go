@@ -1,7 +1,7 @@
 package server
 
 import (
-	"common/commonconfig"
+	"common/config"
 	"common/exitcode"
 	"common/middlewares"
 	"common/rest"
@@ -31,19 +31,36 @@ func NewWebServer(
 		JSONEncoder:  json.Marshal,
 	})
 
-	RegisterMiddlewaresBefore(app)
-	middlewares.RegisterMiddlewares(app)
-	RegisterMiddlewaresAfter(app)
+	if RegisterMiddlewaresBefore != nil {
+		RegisterMiddlewaresBefore(app)
+	}
 
+	middlewares.RegisterMiddlewares(app)
+
+	if RegisterMiddlewaresAfter != nil {
+		RegisterMiddlewaresAfter(app)
+	}
+
+	if RegisterFinalMiddlewaresBefore != nil {
+		RegisterFinalMiddlewaresBefore(app)
+	}
+
+	log.Info("Server is running on port ", commonconfig.Port)
 	RegisterRoutes(app)
 
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.SendString("OK")
 	})
 
-	RegisterFinalMiddlewaresBefore(app)
+	if RegisterFinalMiddlewaresAfter != nil {
+		RegisterFinalMiddlewaresAfter(app)
+	}
+
 	middlewares.RegisterFinalMiddlewares(app)
-	RegisterFinalMiddlewaresAfter(app)
+
+	if RegisterFinalMiddlewaresAfter != nil {
+		RegisterFinalMiddlewaresAfter(app)
+	}
 
 	err := app.Listen(fmt.Sprintf(":%d", commonconfig.Port))
 	if err != nil {

@@ -1,7 +1,7 @@
 package database
 
 import (
-	"common/commonconfig"
+	"common/config"
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"

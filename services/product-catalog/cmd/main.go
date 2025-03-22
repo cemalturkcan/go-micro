@@ -3,6 +3,7 @@ package main
 import (
 	"common/app"
 	"common/grpc/helloworld"
+	"common/role"
 	"context"
 	"github.com/gofiber/fiber/v2"
 	"google.golang.org/grpc"
@@ -10,7 +11,16 @@ import (
 )
 
 func main() {
-	app.Load(RegisterMiddlewaresBefore, RegisterMiddlewaresAfter, RegisterRoutes, RegisterFinalMiddlewaresBefore, RegisterFinalMiddlewaresAfter, RegisterGrpcRoutes)
+	app.Load(app.Config{
+		RegisterMiddlewaresBefore:      RegisterMiddlewaresBefore,
+		RegisterMiddlewaresAfter:       RegisterMiddlewaresAfter,
+		RegisterRoutes:                 RegisterRoutes,
+		RegisterFinalMiddlewaresBefore: RegisterFinalMiddlewaresBefore,
+		RegisterFinalMiddlewaresAfter:  RegisterFinalMiddlewaresAfter,
+		RegisterGrpcRoutes:             RegisterGrpcRoutes,
+		ConnectKeystore:                true,
+		ConnectDatabase:                true,
+	})
 }
 
 func RegisterMiddlewaresBefore(app *fiber.App) {
@@ -23,6 +33,9 @@ func RegisterMiddlewaresAfter(app *fiber.App) {
 
 func RegisterRoutes(app *fiber.App) {
 	app.Get("/", func(c *fiber.Ctx) error {
+		if role.HasAny(c, []string{"manager"}) {
+			return c.SendString("Hello, Manager!")
+		}
 		return c.SendString("Hello, World!")
 	})
 }

@@ -1,7 +1,7 @@
 package app
 
 import (
-	"common/commonconfig"
+	"common/config"
 	"common/database"
 	"common/keystore"
 	"common/registry"
@@ -14,51 +14,89 @@ import (
 	"time"
 )
 
-func Load(
-	RegisterMiddlewaresBefore func(app *fiber.App),
-	RegisterMiddlewaresAfter func(app *fiber.App),
-	RegisterRoutes func(app *fiber.App),
-	RegisterFinalMiddlewaresBefore func(app *fiber.App),
-	RegisterFinalMiddlewaresAfter func(app *fiber.App),
-	RegisterGrpcRoutes func(server *grpc.Server),
+type Config struct {
+	// This one will be register before default middlewares
+	RegisterMiddlewaresBefore func(app *fiber.App)
+	// This one will be register after default middlewares
+	RegisterMiddlewaresAfter func(app *fiber.App)
 
-) {
+	RegisterRoutes func(app *fiber.App)
+
+	// After all routes are registered and before default final middlewares
+	RegisterFinalMiddlewaresBefore func(app *fiber.App)
+
+	// After default final middlewares
+	RegisterFinalMiddlewaresAfter func(app *fiber.App)
+
+	// Grpc routes
+	RegisterGrpcRoutes func(server *grpc.Server)
+
+	ConnectDatabase bool
+	ConnectKeystore bool
+}
+
+func Load(config Config) {
 	//
-	id := registry.SetConsulAndRegisterServiceWithConsul()
+	id := registry.SetConsulAndRegisterServiceWithConsul(config.RegisterRoutes != nil, config.RegisterGrpcRoutes != nil)
 	registry.RegisterGrpcResolver()
 	//
 
-	database.Connect()
-	database.MigrateDb()
-	keystore.Connect()
+	if config.ConnectDatabase {
+		database.Connect()
+		database.MigrateDb()
+	}
+
+	if config.ConnectKeystore {
+		keystore.Connect()
+	}
 
 	var wg sync.WaitGroup
 
-	wg.Add(2)
+	if config.RegisterRoutes == nil || config.RegisterGrpcRoutes == nil {
+		wg.Add(1)
+	} else {
+		wg.Add(2)
+	}
 
-	go func() {
-		defer wg.Done()
-		server.NewWebServer(RegisterMiddlewaresBefore, RegisterMiddlewaresAfter, RegisterRoutes, RegisterFinalMiddlewaresBefore, RegisterFinalMiddlewaresAfter)
-	}()
+	//
 
-	go func() {
-		defer wg.Done()
-		server.NewGrpcServer(RegisterGrpcRoutes)
-	}()
+	if config.RegisterRoutes != nil {
+		go func() {
+			defer wg.Done()
+			server.NewWebServer(config.RegisterMiddlewaresBefore, config.RegisterMiddlewaresAfter, config.RegisterRoutes, config.RegisterFinalMiddlewaresBefore, config.RegisterFinalMiddlewaresAfter)
+		}()
+	}
 
+	//
+	if config.RegisterGrpcRoutes != nil {
+		go func() {
+			defer wg.Done()
+			server.NewGrpcServer(config.RegisterGrpcRoutes)
+		}()
+	}
+
+	//
+
+	//
 	go func() {
 		for {
-			registry.ReportHealthyState(id, commonconfig.AppName)
+			registry.ReportHealthyState(id, commonconfig.AppName, config.RegisterRoutes != nil, config.RegisterGrpcRoutes != nil)
 			time.Sleep(1 * time.Second)
 		}
 	}()
+	//
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		_ = <-c
-		database.Close()
-		keystore.Close()
+		if config.ConnectDatabase {
+			database.Close()
+		}
+		if config.ConnectKeystore {
+			keystore.Close()
+		}
+
 		registry.DeregisterService(id)
 	}()
 	wg.Wait()

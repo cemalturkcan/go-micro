@@ -11,7 +11,16 @@ import (
 )
 
 func main() {
-	app.Load(RegisterMiddlewaresBefore, RegisterMiddlewaresAfter, RegisterRoutes, RegisterFinalMiddlewaresBefore, RegisterFinalMiddlewaresAfter, RegisterGrpcRoutes)
+	app.Load(app.Config{
+		RegisterMiddlewaresBefore:      RegisterMiddlewaresBefore,
+		RegisterMiddlewaresAfter:       RegisterMiddlewaresAfter,
+		RegisterRoutes:                 RegisterRoutes,
+		RegisterFinalMiddlewaresBefore: RegisterFinalMiddlewaresBefore,
+		RegisterFinalMiddlewaresAfter:  RegisterFinalMiddlewaresAfter,
+		RegisterGrpcRoutes:             RegisterGrpcRoutes,
+		ConnectKeystore:                true,
+		ConnectDatabase:                true,
+	})
 }
 
 func RegisterMiddlewaresBefore(app *fiber.App) {

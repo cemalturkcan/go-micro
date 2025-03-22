@@ -1,7 +1,7 @@
 package keystore
 
 import (
-	"common/commonconfig"
+	"common/config"
 	"context"
 	"fmt"
 	"github.com/redis/go-redis/v9"
